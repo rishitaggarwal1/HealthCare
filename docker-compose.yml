@@ -7,9 +7,8 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://0.0.0.0:8080
-
       # SQL Server running on your HOST machine
-      ConnectionStrings__Default: "Server=host.docker.internal,1433;Database=${SQL_DB};User Id=${SQL_USER};Password=${SQL_PASSWORD};TrustServerCertificate=True;Encrypt=False;"
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=HealthDB;User Id=appuser;Password=Rishit@123;TrustServerCertificate=True;Encrypt=False;"
 
       # JWT (only if you enabled auth; otherwise you can remove these)
       Jwt__Key: ${JWT_KEY}
@@ -17,6 +16,20 @@ services:
       Jwt__Audience: ${JWT_AUDIENCE}
     ports:
       - "8080:8080"
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: healthcare_sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Rishit@123"
+    ports:
+      - "1433:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U appuser -P 'Rishit@123' -Q 'SELECT 1' -C || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   frontend:
     build:
@@ -28,4 +41,4 @@ services:
     depends_on:
       - backend
     ports:
-      - "5173:80"
+      - "3000:80"

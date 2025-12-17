@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using HealthCare.Data;
+using HealthCare.Services;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,11 +11,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// CORS (lock to frontend in prod)
 builder.Services.AddCors(opt =>
 {
     opt.AddPolicy("web", p =>
-        p.WithOrigins("http://localhost:5173")
+        p.WithOrigins("http://localhost:5173", "http://localhost:3000")
          .AllowAnyHeader()
          .AllowAnyMethod()
          .AllowCredentials()
@@ -22,19 +22,13 @@ builder.Services.AddCors(opt =>
 });
 
 // Database
-var connectionString = builder.Configuration.GetConnectionString("Default");
-
-
-if (string.IsNullOrWhiteSpace(connectionString))
-    throw new InvalidOperationException("Missing connection string: ConnectionStrings:Default");
-
-
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // JWT
 var jwtKey = Environment.GetEnvironmentVariable("Jwt__Key")!;
-//var jwtKey = builder.Configuration["Jwt:Key"]!;
+if(jwtKey == null)
+    jwtKey = builder.Configuration["Jwt:Key"]!;
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
@@ -49,15 +43,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
     });
+builder.Services.AddScoped<HealthCare.Services.JwtTokenService>();
+
 
 builder.Services.AddAuthorization();
-
+builder.Services.AddControllers();
 var app = builder.Build();
+
 
 app.UseSwagger();
 app.UseSwaggerUI();
 
 ///app.UseHttpsRedirection();
+app.UseRouting();
 app.UseCors("web");
 
 app.UseAuthentication();
